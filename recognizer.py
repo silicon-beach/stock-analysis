@@ -27,8 +27,8 @@ def PIP_identification(P, Q_length=7):
 
             SP[index_mid + counter], index_temp = maximize_PIP_distance(
                 P[index_upper_start:index_upper_end + 1])
-
             index_upper_start += index_temp
+
             counter += 1
 
         return SP
@@ -69,3 +69,33 @@ def perpendicular_distance(P1, P2, P3, distance):
              P3[1] + P2[0] * P1[1] - P2[1] * P1[0]) / distance
 
     return PD
+
+
+def inverse_head_and_shoulder_rule(SP, diff_value=0.15):
+    """
+    Input:
+        SP: 7 point PIP identified points
+        diff_value: maximum permissible difference between 2 values
+    Output:
+        returns a boolean if SP points satisfy IHS pattern
+    Description:
+        SP starts from index 0
+        sp3 < sp1 and sp5
+        sp1 < sp0 and sp2
+        sp5 < sp4 and sp6
+        sp2 < sp0
+        sp4 < sp6
+        diff(sp1, sp5) < diff_value
+        diff(sp2, sp4) < diff_value
+    """
+    
+    if SP[3] > SP[1] or SP[3] > SP[5] or SP[1] > SP[0] or SP[1] > SP[2] or SP[5] > SP[4] or SP[5] > SP[6] or SP[2] > SP[0] or SP[4] > SP[6]:
+        return False
+
+    if abs((SP[1] - SP[5]) * 1.0 / max(SP[1], SP[5])) >= diff_value:
+        return False
+
+    if abs((SP[2] - SP[4]) * 1.0 / max(SP[2], SP[4])) >= diff_value:
+        return False
+
+    return True

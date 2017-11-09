@@ -13,3 +13,18 @@ Few points to remember
 * Project management: https://trello.com/b/sXpA1eym/stock-patterns
 
 ***
+
+
+
+
+
+Javascript
+# msft.csv
+
+# output.csv
+
+MSFT start-time end-time PIP_output PIP_times
+e.g. MSFT 10 100 23;12;234;51;20;35;12 11;23;30;...
+
+
+APPLE start-time end-time

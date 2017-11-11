@@ -12,8 +12,11 @@ Few points to remember
 * For first time git users, please use a git GUI like sourcetree. 
 * Project management: https://trello.com/b/sXpA1eym/stock-patterns
 
-***
+#### Installation
 
+``` pip install -r requirements.txt ```
+
+***
 
 
 

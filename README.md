@@ -16,6 +16,12 @@ Few points to remember
 
 ``` pip install -r requirements.txt ```
 
+#### Execution
+* Data collection
+  ``` python main.py 1 ```
+* Pattern recognition
+  ``` python main.py 2 ```
+  
 ***
 
 

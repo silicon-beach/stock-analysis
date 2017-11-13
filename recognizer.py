@@ -2,38 +2,45 @@
 import numpy as np
 
 
-def PIP_identification(P, Q_length=7):
+def PIP_identification(P, P_time, Q_length=7):
     """
     Input:
             P: input sequence
+            P_time: timestamp for input sequence
             Q_length: length of query sequence; Defaults : 7
     Output:
-            returns a sequence of Perceptually important point (PIP) identification of size Q_length
+            returns a sequence of Perceptually important point (PIP) identification and the corresponding time values of size Q_length
     """
     try:
         SP = [-1] * Q_length
+        SP_time = [-1] * Q_length
         SP[0] = P[0]
+        SP_time[0] = P_time[0]
         SP[Q_length - 1] = P[-1]
+        SP_time[Q_length - 1] = P_time[-1]
         counter = 1
         index_mid = int((Q_length - 1) / 2)
         SP[index_mid], index_lower_end = maximize_PIP_distance(P)
+        SP_time[index_mid] = P_time[index_lower_end]
         index_upper_start = index_lower_end
         index_lower_start = 0
         index_upper_end = len(P) - 1
-
         while counter < index_mid:
             SP[index_mid - counter], index_lower_end = maximize_PIP_distance(
                 P[index_lower_start:index_lower_end + 1])
+            SP_time[index_mid -
+                    counter] = P_time[index_lower_start + index_lower_end]
 
             SP[index_mid + counter], index_temp = maximize_PIP_distance(
                 P[index_upper_start:index_upper_end + 1])
+            SP_time[index_mid + counter] = P_time[index_upper_start + index_temp]
             index_upper_start += index_temp
 
             counter += 1
 
-        return SP
-    except ValueError:
-        return []
+        return SP, SP_time
+    except ValueError as v:
+        return [],[]
 
 
 def maximize_PIP_distance(P):
@@ -88,14 +95,16 @@ def inverse_head_and_shoulder_rule(SP, diff_value=0.15):
         diff(sp1, sp5) < diff_value
         diff(sp2, sp4) < diff_value
     """
-    
+    if not SP:
+        return False
+
     if SP[3] > SP[1] or SP[3] > SP[5] or SP[1] > SP[0] or SP[1] > SP[2] or SP[5] > SP[4] or SP[5] > SP[6] or SP[2] > SP[0] or SP[4] > SP[6]:
         return False
 
-    if abs((SP[1] - SP[5]) * 1.0 / max(SP[1], SP[5])) >= diff_value:
+    if abs((SP[1] - SP[5]) * 1.0 / min(SP[1], SP[5])) >= diff_value:
         return False
 
-    if abs((SP[2] - SP[4]) * 1.0 / max(SP[2], SP[4])) >= diff_value:
+    if abs((SP[2] - SP[4]) * 1.0 / min(SP[2], SP[4])) >= diff_value:
         return False
 
     return True

@@ -2,6 +2,8 @@ import dataCollection as dc
 import recognizer as rz
 import pandas as pd
 import sys
+import glob
+import os
 
 # window size
 WLEN = 29
@@ -11,21 +13,24 @@ def main():
     # 2 different states; 1: Data collection state and 2: data processing(pattern
     # recognition) state
     state = int(sys.argv[1])
-
-    filename = sys.argv[2]
+    directory_name = 'data'
+    try:
+        directory_name = sys.argv[2]
+    except IndexError:
+        pass
 
     if state == 1:
-        symbols = dc.get_symbols()
+        dc.get_data()
     else:
-        df = read_csv(filename)
-        get_resistance_support(df)
+        data = ["symbol,pipoutput,pipoutputtime\n"]
+        for filename in glob.glob(os.path.join(directory_name, '*.csv')):
+            df = dc.read_csv(filename, chunksize=WLEN)
+            pattern, pattern_time = get_resistance_support(df)
+            for p in range(0, len(pattern)):
+                data.append(
+                    ",".join([os.path.basename(filename).split('.')[0], ";".join(map(str, pattern[p])), ";".join(pattern_time[p])]) + "\n")
 
-
-def read_csv(file_name):
-    df = pd.read_csv(file_name, names=[
-                     "timestamp", "open", "high", "low", "close", "volume", "vwap"], sep=',', header=0, chunksize=WLEN)
-    return df
-
+        dc.write_csv(data=data)
 
 def get_resistance_support(data_file):
     chunk_left_P = []
@@ -48,13 +53,14 @@ def get_resistance_support(data_file):
 
         # Remove patterns which are void
         # when the current price is lower than the support
+        P_min = min(P)
         for k, v in list(detected_patterns.items()):
-            if min(v) > P_max:
+            if min(v) > P_min:
                 del detected_patterns[k]
                 del detected_patterns_time[k]
 
         while P_len >= (start_row + WLEN):
-            #print(P_len,start_row,start_row + WLEN)
+            # print(P_len,start_row,start_row + WLEN)
             SP, SP_time = rz.PIP_identification(
                 P[start_row:start_row + WLEN], P_time[start_row:start_row + WLEN])
             # print(SP,SP_time)

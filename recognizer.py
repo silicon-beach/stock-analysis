@@ -9,7 +9,7 @@ def PIP_identification(P, P_time, Q_length=7):
     Input:
             P_time: time sequence
             P: input sequence
-            Q_length: number of PIPs 
+            Q_length: number of PIPs
     Output:
             returns PIPs
     """
@@ -19,11 +19,11 @@ def PIP_identification(P, P_time, Q_length=7):
     perp_distance = [-1] * len(P)
     SP = []
     SP_time = []
-    for i in xrange(1, Q_length - 1):
+    for i in range(1, Q_length - 1):
         perp_distance, index = PIP_distance(is_pip, P, perp_distance)
         is_pip[index] = True
 
-    for i in xrange(0, len(P)):
+    for i in range(0, len(P)):
         if is_pip[i]:
             SP.append(P[i])
             SP_time.append(P_time[i])

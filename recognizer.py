@@ -1,6 +1,8 @@
 #!/bin/python3
 import numpy as np
 
+TEMPLATE_OMEGA_WT = 0.5
+
 
 def PIP_identification(P, P_time, Q_length=7):
     """
@@ -48,7 +50,7 @@ def maximize_PIP_distance(P):
     Input:
             P: input sequence
     Output:
-            returns a point with maximum distance to P[1] and P[-1] 
+            returns a point with maximum distance to P[1] and P[-1]
     """
     P1 = [1, P[0]]
     P2 = [len(P), P[-1]]
@@ -108,3 +110,65 @@ def inverse_head_and_shoulder_rule(SP, diff_value=0.15):
         return False
 
     return True
+
+
+def template_matching(PIP,PIP_time,template,template_time):
+    """
+    Input:
+        PIP: Input sequence for pattern to be matched against.
+        template: Input sequence for pattern.
+    Output:
+        Returns the distortion value, of which a value closer
+        to 0 will represent a better match.
+    """
+
+    # Lengths must be the same for them to match.
+    if ((len(PIP) != len(template)) or (len(PIP_time) != len(template)) or
+        len(template_time) != len(template)):
+        return np.inf
+
+    N = len(PIP)
+
+    PIP = np.array(PIP)
+    PIP_time = np.array(PIP_time)
+    template = np.array(template)
+    template_time = np.array(template_time)
+
+
+    # Normalize all points to between 0 and 1
+    PIP = PIP / np.abs(PIP).max()
+    template = template / np.abs(template).max()
+
+    # Normalize the time data points between 0 and 1
+    template_time = template_time - template_time[0]
+    PIP_time = PIP_time - PIP_time[0]
+    template_time = template_time / template_time[-1]
+    PIP_time = PIP_time / PIP_time[-1]
+
+    #Amplitude Distance - the y-axis difference
+    AD = np.linalg.norm(template - PIP) / np.sqrt(N)
+
+    #Temporal Distance - the x-axis difference
+    TD = np.linalg.norm(template_time - PIP_time) / np.sqrt(N-1)
+
+    distortion = AD * TEMPLATE_OMEGA_WT + TD * (1- TEMPLATE_OMEGA_WT)
+
+    return distortion
+
+def temporal_control_penalty(slen,dlen,dlc):
+    """
+    Input:
+        slen: Subsequence length.
+        dlen: Desired length of matching subsequence
+        dlc: Desired length control parameter. Controls sharpness of curve.
+    Output:
+        Penalty value
+    Description:
+        Calculates the penalty value for the matching subsequence vs the pattern.
+    """
+
+    theta = dlen / dlc
+    d = slen - dlen
+    tc = 1 - np.exp(-((d/theta)**2))
+
+    return tc

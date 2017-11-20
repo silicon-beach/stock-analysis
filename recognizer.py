@@ -5,64 +5,62 @@ TEMPLATE_OMEGA_WT = 0.5
 
 
 def PIP_identification(P, P_time, Q_length=7):
-    """
-    Input:
-            P: input sequence
-            P_time: timestamp for input sequence
-            Q_length: length of query sequence; Defaults : 7
-    Output:
-            returns a sequence of Perceptually important point (PIP) identification and the corresponding time values of size Q_length
-    """
-    try:
-        SP = [-1] * Q_length
-        SP_time = [-1] * Q_length
-        SP[0] = P[0]
-        SP_time[0] = P_time[0]
-        SP[Q_length - 1] = P[-1]
-        SP_time[Q_length - 1] = P_time[-1]
-        counter = 1
-        index_mid = int((Q_length - 1) / 2)
-        SP[index_mid], index_lower_end = maximize_PIP_distance(P)
-        SP_time[index_mid] = P_time[index_lower_end]
-        index_upper_start = index_lower_end
-        index_lower_start = 0
-        index_upper_end = len(P) - 1
-        while counter < index_mid:
-            SP[index_mid - counter], index_lower_end = maximize_PIP_distance(
-                P[index_lower_start:index_lower_end + 1])
-            SP_time[index_mid -
-                    counter] = P_time[index_lower_start + index_lower_end]
+    is_pip = [False] * len(P)
+    is_pip[0] = True
+    is_pip[-1] = True
+    perp_distance = [-1] * len(P)
+    SP = []
+    SP_time = []
+    for i in xrange(1, Q_length - 1):
+        perp_distance, index = PIP_distance(is_pip, P, perp_distance)
+        is_pip[index] = True
 
-            SP[index_mid + counter], index_temp = maximize_PIP_distance(
-                P[index_upper_start:index_upper_end + 1])
-            SP_time[index_mid + counter] = P_time[index_upper_start + index_temp]
-            index_upper_start += index_temp
+    for i in xrange(0, len(P)):
+        if is_pip[i]:
+            SP.append(P[i])
+            SP_time.append(P_time[i])
 
-            counter += 1
-
-        return SP, SP_time
-    except ValueError as v:
-        return [],[]
+    return SP, SP_time
 
 
-def maximize_PIP_distance(P):
+def get_adjacent_pip_index(index, is_pip, side):
+    k = index
+    if side == "right":
+        while not is_pip[k]:
+            k += 1
+    if side == "left":
+        while not is_pip[k]:
+            k -= 1
+    return k
+
+
+def PIP_distance(is_pip, P, perp_distance):
     """
     Input:
             P: input sequence
     Output:
             returns a point with maximum distance to P[1] and P[-1]
     """
-    P1 = [1, P[0]]
-    P2 = [len(P), P[-1]]
 
-    distance_P1_P2 = ((P2[1] - P1[0]) ** 2 + (P2[0] - P1[0]) ** 2) ** 0.5
+    for i in range(1, len(P)):
+        if is_pip[i]:
+            perp_distance[i] = -1
+        else:
+            index_left = get_adjacent_pip_index(i, is_pip, side="left")
+            index_right = get_adjacent_pip_index(i, is_pip, side="right")
 
-    np_perpendicular_dist = np.fromiter((perpendicular_distance(
-        P1, P2, [xi + 1, P[xi]], distance_P1_P2) for xi in range(1, len(P) - 1)), np.float64)
+            P1 = [index_left, P[index_left]]
+            P2 = [index_right, P[index_right]]
 
-    index_max = 1 + np.argmax(np_perpendicular_dist)
+            distance_P1_P2 = ((P2[1] - P1[0]) ** 2 +
+                              (P2[0] - P1[0]) ** 2) ** 0.5
 
-    return P[index_max], index_max
+            perp_distance[i] = perpendicular_distance(
+                P1, P2, [i, P[i]], distance_P1_P2)
+
+    index_max = np.argmax(perp_distance)
+
+    return perp_distance, index_max
 
 
 def perpendicular_distance(P1, P2, P3, distance):
@@ -112,7 +110,7 @@ def inverse_head_and_shoulder_rule(SP, diff_value=0.15):
     return True
 
 
-def template_matching(PIP,PIP_time,template,template_time):
+def template_matching(PIP, PIP_time, template, template_time):
     """
     Input:
         PIP: Input sequence for pattern to be matched against.
@@ -124,7 +122,7 @@ def template_matching(PIP,PIP_time,template,template_time):
 
     # Lengths must be the same for them to match.
     if ((len(PIP) != len(template)) or (len(PIP_time) != len(template)) or
-        len(template_time) != len(template)):
+            len(template_time) != len(template)):
         return np.inf
 
     N = len(PIP)
@@ -133,7 +131,6 @@ def template_matching(PIP,PIP_time,template,template_time):
     PIP_time = np.array(PIP_time)
     template = np.array(template)
     template_time = np.array(template_time)
-
 
     # Normalize all points to between 0 and 1
     PIP = PIP / np.abs(PIP).max()
@@ -145,17 +142,18 @@ def template_matching(PIP,PIP_time,template,template_time):
     template_time = template_time / template_time[-1]
     PIP_time = PIP_time / PIP_time[-1]
 
-    #Amplitude Distance - the y-axis difference
+    # Amplitude Distance - the y-axis difference
     AD = np.linalg.norm(template - PIP) / np.sqrt(N)
 
-    #Temporal Distance - the x-axis difference
-    TD = np.linalg.norm(template_time - PIP_time) / np.sqrt(N-1)
+    # Temporal Distance - the x-axis difference
+    TD = np.linalg.norm(template_time - PIP_time) / np.sqrt(N - 1)
 
-    distortion = AD * TEMPLATE_OMEGA_WT + TD * (1- TEMPLATE_OMEGA_WT)
+    distortion = AD * TEMPLATE_OMEGA_WT + TD * (1 - TEMPLATE_OMEGA_WT)
 
     return distortion
 
-def temporal_control_penalty(slen,dlen,dlc):
+
+def temporal_control_penalty(slen, dlen, dlc):
     """
     Input:
         slen: Subsequence length.
@@ -169,6 +167,6 @@ def temporal_control_penalty(slen,dlen,dlc):
 
     theta = dlen / dlc
     d = slen - dlen
-    tc = 1 - np.exp(-((d/theta)**2))
+    tc = 1 - np.exp(-((d / theta)**2))
 
     return tc

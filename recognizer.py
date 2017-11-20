@@ -5,6 +5,14 @@ TEMPLATE_OMEGA_WT = 0.5
 
 
 def PIP_identification(P, P_time, Q_length=7):
+    """
+    Input:
+            P_time: time sequence
+            P: input sequence
+            Q_length: number of PIPs 
+    Output:
+            returns PIPs
+    """
     is_pip = [False] * len(P)
     is_pip[0] = True
     is_pip[-1] = True
@@ -24,6 +32,15 @@ def PIP_identification(P, P_time, Q_length=7):
 
 
 def get_adjacent_pip_index(index, is_pip, side):
+    """
+    Input:
+            is_pip: Indicator if a particular value has been identified as PIP
+            index: Current index
+            side: side to which we need the nearest PIP
+    Output:
+            returns nearest PIP
+    """
+
     k = index
     if side == "right":
         while not is_pip[k]:
@@ -37,9 +54,11 @@ def get_adjacent_pip_index(index, is_pip, side):
 def PIP_distance(is_pip, P, perp_distance):
     """
     Input:
+            is_pip: Indicator if a particular value has been identified as PIP
             P: input sequence
+            perp_distance: distance of points from the nearest PIPs
     Output:
-            returns a point with maximum distance to P[1] and P[-1]
+            returns a point with maximum distance to nearest PIPs and the perp_distance
     """
 
     for i in range(1, len(P)):

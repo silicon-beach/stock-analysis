@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import recognizer as rc
 
 
-NOISE_SIGMA = 0.01
+NOISE_SIGMA = 0.03
 PATTERN_LENGTH = 70
 
 def generate_synthetic_data(patterns):
@@ -23,16 +23,24 @@ def generate_synthetic_data(patterns):
     noisy_data = {}
 
     for pat_name, pat_data in patterns.items():
-        tmp_x = np.copy(pat_data['x'])
-        tmp_y = np.copy(pat_data['y'])
-
-        #tmp_x = time_warping(tmp_x)
-        tmp_x,tmp_y = time_scaling(tmp_x,tmp_y,PATTERN_LENGTH)
-        #tmp_y = noise_adding(tmp_y,NOISE_SIGMA)
-
-        noisy_data[pat_name] = (tmp_x,tmp_y)
+        noisy_data[pat_name] = generate_one_pattern(pat_data['x'],pat_data['y'])
 
     return noisy_data
+
+
+def generate_one_pattern(pat_data_x, pat_data_y):
+    """
+    Description: Generate synthetic data for one pattern
+    """
+    tmp_x = np.copy(pat_data_x)
+    tmp_y = np.copy(pat_data_y)
+
+    tmp_x = time_warping(tmp_x)
+    tmp_x,tmp_y = time_scaling(tmp_x,tmp_y,PATTERN_LENGTH)
+    tmp_y = noise_adding(tmp_y,NOISE_SIGMA)
+
+    return tmp_x,tmp_y
+
 
 def time_scaling(pattern_x, pattern_y, numOfPts):
     """
@@ -74,7 +82,7 @@ def time_warping(pattern_x):
         currPt = pattern_x[i]
         prevPt = pattern_x[i-1] if i>0      else currPt
         nextPt = pattern_x[i+1] if i<numPts-1 else currPt
-        sigma = (nextPt - prevPt) / 3
+        sigma = (nextPt - prevPt) / 4
 
         if i>0 and i<numPts-1:
             output_x[i] = random.gauss(currPt,sigma)
@@ -114,6 +122,7 @@ if __name__ == '__main__':
     template_pat = tp.template_patterns()
     noisy_data = generate_synthetic_data(template_pat)
 
+    accuracy_count = 0
 
     for pat_name, pat_data in noisy_data.items():
         pip_y,pip_x = rc.PIP_identification(pat_data[1],pat_data[0])
@@ -133,7 +142,7 @@ if __name__ == '__main__':
         for template_name, template_data in template_pat.items():
             val = rc.template_matching(pip_y,pip_x,
                                        template_data['y'],template_data['x'])
-            print('Distortion (' + template_name + '): ' + str(val))
+            #print('Distortion (' + template_name + '): ' + str(val))
 
             distortion.append((val,template_name))
 
@@ -141,12 +150,12 @@ if __name__ == '__main__':
         if minIdx > len(distortion):
             print("Less than 0")
         print('Detected as ' + str(distortion[minIdx]))
+        if (distortion[minIdx])[1] == pat_name:
+            print('Correct Detection!')
+            accuracy_count += 1
+        else:
+            print('Wrong Detection')
 
 
-
-
-
-
-
-
+    print('Accuracy: ' + str(accuracy_count) + '/' + str(len(noisy_data)))
 

@@ -12,8 +12,9 @@ import matplotlib.pyplot as plt
 import recognizer as rc
 
 
-NOISE_SIGMA = 0.03
-PATTERN_LENGTH = 70
+AMPLITUDE_SIGMA = 0.05
+TIME_SIGMA = 0.06
+DEFAULT_PATTERN_LENGTH = 70  # Must be multiple of 7
 
 def generate_synthetic_data(patterns):
     """
@@ -23,21 +24,22 @@ def generate_synthetic_data(patterns):
     noisy_data = {}
 
     for pat_name, pat_data in patterns.items():
-        noisy_data[pat_name] = generate_one_pattern(pat_data['x'],pat_data['y'])
+        noisy_data[pat_name] = generate_one_pattern(pat_data['x'],pat_data['y'],
+                                                    DEFAULT_PATTERN_LENGTH )
 
     return noisy_data
 
 
-def generate_one_pattern(pat_data_x, pat_data_y):
+def generate_one_pattern(pat_data_x, pat_data_y,amp_sigma,time_sigma,pattern_length):
     """
     Description: Generate synthetic data for one pattern
     """
     tmp_x = np.copy(pat_data_x)
     tmp_y = np.copy(pat_data_y)
 
-    tmp_x = time_warping(tmp_x)
-    tmp_x,tmp_y = time_scaling(tmp_x,tmp_y,PATTERN_LENGTH)
-    tmp_y = noise_adding(tmp_y,NOISE_SIGMA)
+    tmp_x = time_warping(tmp_x,time_sigma)
+    tmp_x,tmp_y = time_scaling(tmp_x,tmp_y,pattern_length)
+    tmp_y = noise_adding(tmp_y,amp_sigma)
 
     return tmp_x,tmp_y
 
@@ -65,7 +67,7 @@ def time_scaling(pattern_x, pattern_y, numOfPts):
 
 
 
-def time_warping(pattern_x):
+def time_warping(pattern_x,time_sigma):
     """
     Input:
         pattern_x: The pattern to apply transformation, x-axis.
@@ -79,16 +81,13 @@ def time_warping(pattern_x):
     output_x = np.zeros(numPts)
 
     for i in range(numPts):
-        currPt = pattern_x[i]
-        prevPt = pattern_x[i-1] if i>0      else currPt
-        nextPt = pattern_x[i+1] if i<numPts-1 else currPt
-        sigma = (nextPt - prevPt) / 4
+        sigma = time_sigma
 
         if i>0 and i<numPts-1:
-            output_x[i] = random.gauss(currPt,sigma)
+            output_x[i] = random.gauss(pattern_x[i],sigma)
         else:
             #output_x[i] = prevPt + abs(random.gauss(0,sigma))
-            output_x[i] = currPt
+            output_x[i] = pattern_x[i]
 
 
 
@@ -117,45 +116,54 @@ def noise_adding(pattern_y, noise_sigma):
     return output_y
 
 
+def test_pattern_results(pattern_dict,pattern_name,amp_sigma=AMPLITUDE_SIGMA,
+                         time_sigma=TIME_SIGMA,pattern_length=DEFAULT_PATTERN_LENGTH):
+    """
+    Input:
+        pattern_dict: Dictionary of patterns.
+        pattern_name: Name of pattern to test.
+
+    Description:
+        Run test and plot on one pattern
+    """
+    curr_pat = pattern_dict[pattern_name]
+    data_x,data_y = generate_one_pattern(curr_pat['x'],curr_pat['y'],
+                                         amp_sigma,time_sigma,
+                                         pattern_length)
+    pip_y,pip_x = rc.PIP_identification(data_y,data_x)
+
+    plt.plot(data_x,data_y,'-o')
+    plt.plot(pip_x,pip_y,'--x')
+    plt.title(pattern_name)
+    plt.show()
+
+    plt.plot(pip_x,pip_y,'--x')
+    plt.title('PIP Plot: ' + pattern_name)
+    plt.show()
+
+    distortion_val, min_pattern_name = rc.multiple_template_matching(pip_y, pip_x, pattern_dict)
+    print('Detected as ' + min_pattern_name)
+    print('Distortion value: ' + str(distortion_val))
+    if min_pattern_name == pattern_name:
+        print('Correct Detection!')
+        return True
+    else:
+        print('Wrong Detection')
+        return False
+
+
+
+
+
+
 if __name__ == '__main__':
-
-    template_pat = tp.template_patterns()
-    noisy_data = generate_synthetic_data(template_pat)
-
     accuracy_count = 0
 
-    for pat_name, pat_data in noisy_data.items():
-        pip_y,pip_x = rc.PIP_identification(pat_data[1],pat_data[0])
-
-        plt.plot(pat_data[0],pat_data[1],'-o')
-        plt.plot(pip_x,pip_y,'--x')
-
-        plt.title(pat_name)
-        plt.show()
-
-        plt.plot(pip_x,pip_y,'--x')
-        plt.title('PIP Plot: ' + pat_name)
-        plt.show()
-
-        distortion = []
-
-        for template_name, template_data in template_pat.items():
-            val = rc.template_matching(pip_y,pip_x,
-                                       template_data['y'],template_data['x'])
-            #print('Distortion (' + template_name + '): ' + str(val))
-
-            distortion.append((val,template_name))
-
-        minIdx = np.argmin(distortion,axis=0)[0]
-        if minIdx > len(distortion):
-            print("Less than 0")
-        print('Detected as ' + str(distortion[minIdx]))
-        if (distortion[minIdx])[1] == pat_name:
-            print('Correct Detection!')
+    template_pat = tp.template_patterns()
+    for pat_name in template_pat:
+        isCorrect = test_pattern_results(template_pat,pat_name)
+        if isCorrect is True:
             accuracy_count += 1
-        else:
-            print('Wrong Detection')
 
 
-    print('Accuracy: ' + str(accuracy_count) + '/' + str(len(noisy_data)))
-
+    print('Accuracy: ' + str(accuracy_count) + '/' + str(len(template_pat)))

@@ -1,7 +1,7 @@
 #!/bin/python3
 import numpy as np
 
-TEMPLATE_OMEGA_WT = 0.5
+TEMPLATE_OMEGA_WT = 0.4
 
 
 def PIP_identification(P, P_time, Q_length=7):
@@ -13,6 +13,9 @@ def PIP_identification(P, P_time, Q_length=7):
     Output:
             returns PIPs
     """
+    if len(P) == 0:
+        print("Length cannot be zero!")
+
     is_pip = [False] * len(P)
     is_pip[0] = True
     is_pip[-1] = True
@@ -162,6 +165,9 @@ def template_matching(PIP, PIP_time, template, template_time):
     PIP_time = PIP_time / PIP_time[-1]
 
     # Amplitude Distance - the y-axis difference
+    #PIP_inverse = 1 - PIP
+    #PIP_normalize = np.maximum(PIP,PIP_inverse)
+    #AD = np.linalg.norm((template - PIP)/PIP_normalize) / np.sqrt(N)
     AD = np.linalg.norm(template - PIP) / np.sqrt(N)
 
     # Temporal Distance - the x-axis difference
@@ -170,6 +176,41 @@ def template_matching(PIP, PIP_time, template, template_time):
     distortion = AD * TEMPLATE_OMEGA_WT + TD * (1 - TEMPLATE_OMEGA_WT)
 
     return distortion
+
+
+def multiple_template_matching(PIP, PIP_time, template_list):
+    """
+    Input:
+        PIP: PIP values, y-axis
+        PIP_time: PIP values, x-axis(time)
+        template_list: Dict of templates, with format
+                       template['template_name']['x or y']
+
+    Output: Tuple containing the minimum distortion value and the corresponding
+            pattern name (distortion_val,pattern_name)
+    Description:
+        Match against mutiple templates, and return the template with the lowest
+        distortion.
+    """
+
+    distortion_min = np.inf
+    min_pattern_name = ''
+
+    for template_name, template_data in template_list.items():
+        val = template_matching(PIP,PIP_time,
+                                   template_data['y'],template_data['x'])
+        #print('Distortion (' + template_name + '): ' + str(val))
+
+        if val < distortion_min:
+            distortion_min = val
+            min_pattern_name = template_name
+
+    return (distortion_min,min_pattern_name)
+
+
+
+
+
 
 
 def temporal_control_penalty(slen, dlen, dlc):

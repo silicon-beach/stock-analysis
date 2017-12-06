@@ -13,10 +13,10 @@ import matplotlib.pyplot as plt
 import genetic_algo as ga
 
 
-NOISE_X_MEAN = 20
+NOISE_X_MEAN = 70
 NOISE_X_SIGMA = 15
 NOISE_Y_MEAN = 0.5
-NOISE_Y_SIGMA = 0.1
+NOISE_Y_SIGMA = 0.01
 
 AMPLITUDE_SIGMA = 0.01
 TIME_SIGMA = 0.06
@@ -35,6 +35,7 @@ def generate_series_of_synthetic_data(patterns, series_tuple, amp_sigma,
     """
 
     series_y = []
+    #series_y.extend(generate_random_noise(noise_params))
 
     for pat_name,pat_length in series_tuple:
         pat_data = patterns[pat_name]
@@ -45,8 +46,7 @@ def generate_series_of_synthetic_data(patterns, series_tuple, amp_sigma,
 
 
         # Random noise in between patterns
-
-        series_y.extend(generate_random_noise(noise_params))
+        #series_y.extend(generate_random_noise(noise_params))
 
     series_x = np.linspace(0,1,len(series_y))
     series_y = np.array(series_y)

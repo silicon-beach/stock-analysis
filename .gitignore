@@ -104,3 +104,5 @@ ENV/
 data/*.csv
 data/*.txt
 result.csv
+/GA_log.txt
+/stats_plot.pdf

@@ -137,9 +137,6 @@ def test_pattern_results(pattern_dict,pattern_name,amp_sigma=AMPLITUDE_SIGMA,
     plt.title(pattern_name)
     plt.show()
 
-    plt.plot(pip_x,pip_y,'--x')
-    plt.title('PIP Plot: ' + pattern_name)
-    plt.show()
 
     distortion_val, min_pattern_name = rc.multiple_template_matching(pip_y, pip_x, pattern_dict)
     print('Detected as ' + min_pattern_name)
@@ -151,7 +148,10 @@ def test_pattern_results(pattern_dict,pattern_name,amp_sigma=AMPLITUDE_SIGMA,
         print('Wrong Detection')
         return False
 
-
+    pattern_len = len(pattern_dict[min_pattern_name]['y'])
+    plt.plot(pip_x[:pattern_len],pip_y[:pattern_len],'--x')
+    plt.title('PIP Plot: ' + pattern_name)
+    plt.show()
 
 
 

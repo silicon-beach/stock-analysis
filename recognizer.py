@@ -4,7 +4,7 @@ import numpy as np
 TEMPLATE_OMEGA_WT = 0.4
 
 
-def PIP_identification(P, P_time, Q_length=7):
+def PIP_identification(P, P_time, Q_length=7, isNumpyFormat=False):
     """
     Input:
             P_time: time sequence
@@ -13,23 +13,27 @@ def PIP_identification(P, P_time, Q_length=7):
     Output:
             returns PIPs
     """
-    if len(P) == 0:
+    N = len(P)
+    if N == 0:
         print("Length cannot be zero!")
 
-    is_pip = [False] * len(P)
-    is_pip[0] = True
-    is_pip[-1] = True
-    perp_distance = [-1] * len(P)
-    SP = []
-    SP_time = []
-    for i in range(1, Q_length - 1):
-        perp_distance, index = PIP_distance(is_pip, P, perp_distance)
-        is_pip[index] = True
+    if N < Q_length:
+        return [], []
 
-    for i in range(0, len(P)):
-        if is_pip[i]:
-            SP.append(P[i])
-            SP_time.append(P_time[i])
+
+    # Converted PIP identification to Numpy, for performance
+    if isNumpyFormat == False:
+        P = np.array(P)
+        P_time = np.array(P_time)
+    pip_indexes = [0, N-1]
+
+    for i in range(1, Q_length - 1):
+        index = PIP_distance(pip_indexes, P)
+        pip_indexes.append(index)
+        pip_indexes.sort()
+
+    SP = P[pip_indexes]
+    SP_time = P_time[pip_indexes]
 
     return SP, SP_time
 
@@ -54,35 +58,42 @@ def get_adjacent_pip_index(index, is_pip, side):
     return k
 
 
-def PIP_distance(is_pip, P, perp_distance):
+def PIP_distance(pip_indexes, P):
     """
     Input:
             is_pip: Indicator if a particular value has been identified as PIP
             P: input sequence
-            perp_distance: distance of points from the nearest PIPs
     Output:
-            returns a point with maximum distance to nearest PIPs and the perp_distance
+            returns a point with maximum distance to nearest PIPs
     """
+    N = len(P)
 
-    for i in range(1, len(P)):
-        if is_pip[i]:
-            perp_distance[i] = -1
-        else:
-            index_left = get_adjacent_pip_index(i, is_pip, side="left")
-            index_right = get_adjacent_pip_index(i, is_pip, side="right")
+    P1 = np.zeros((N,2))
+    P2 = np.zeros((N,2))
+    distance_P1_P2 = np.full(N,np.inf) # Fill with inf value
 
-            P1 = [index_left, P[index_left]]
-            P2 = [index_right, P[index_right]]
+    for i in range(len(pip_indexes) - 1):
+        idx = int(pip_indexes[i])
+        idx_right = int(pip_indexes[i+1])
 
-            distance_P1_P2 = ((P2[1] - P1[0]) ** 2 +
-                              (P2[0] - P1[0]) ** 2) ** 0.5
+        P1[idx+1:idx_right,0] = idx
+        P2[idx+1:idx_right,0] = idx_right
 
-            perp_distance[i] = perpendicular_distance(
-                P1, P2, [i, P[i]], distance_P1_P2)
+        P1[idx+1:idx_right,1] = P[idx]
+        P2[idx+1:idx_right,1] = P[idx_right]
 
-    index_max = np.argmax(perp_distance)
+        distance_P1_P2[idx+1:idx_right] = np.sqrt(((P[idx_right] - P[idx]) ** 2) +
+                                                     ((idx_right - idx) ** 2))
 
-    return perp_distance, index_max
+
+    P3 = np.stack((np.arange(N),P),axis=1)
+
+    perp_distance = perpendicular_distance(
+        P1, P2, P3, distance_P1_P2)
+
+    index_max = np.nanargmax(perp_distance)
+
+    return index_max
 
 
 def perpendicular_distance(P1, P2, P3, distance):
@@ -94,8 +105,8 @@ def perpendicular_distance(P1, P2, P3, distance):
             returns (perpendicular distance) between these 3 points
     """
 
-    PD = abs((P2[1] - P1[1]) * P3[0] - (P2[0] - P1[0]) *
-             P3[1] + P2[0] * P1[1] - P2[1] * P1[0]) / distance
+    PD = np.abs((P2[:,1] - P1[:,1]) * P3[:,0] - (P2[:,0] - P1[:,0]) *
+                 P3[:,1] + P2[:,0] * P1[:,1] - P2[:,1] * P1[:,0]) / distance[:]
 
     return PD
 
@@ -142,17 +153,18 @@ def template_matching(PIP, PIP_time, template, template_time):
         to 0 will represent a better match.
     """
 
-    # Lengths must be the same for them to match.
-    if ((len(PIP) != len(template)) or (len(PIP_time) != len(template)) or
-            len(template_time) != len(template)):
+    N = len(template)
+
+    if ((len(PIP) < N) or (len(PIP_time) < N)):
         return np.inf
 
-    N = len(PIP)
+    # Lengths must be the same for them to match.
+    if len(PIP) != N:
+        PIP = np.array(PIP[:N])
+        PIP_time = np.array(PIP_time[:N])
 
-    PIP = np.array(PIP)
-    PIP_time = np.array(PIP_time)
-    template = np.array(template)
-    template_time = np.array(template_time)
+    #template = np.array(template)
+    #template_time = np.array(template_time)
 
     # Normalize all points to between 0 and 1
     PIP = PIP / np.abs(PIP).max()
@@ -230,3 +242,5 @@ def temporal_control_penalty(slen, dlen, dlc):
     tc = 1 - np.exp(-((d / theta)**2))
 
     return tc
+
+

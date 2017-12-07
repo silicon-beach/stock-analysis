@@ -18,13 +18,14 @@ import template_patterns as tp
 import matplotlib.pyplot as plt
 
 POPULATION_SIZE = 50
-MAX_GENERATIONS = 1000
+MAX_GENERATIONS = 50
 
 # Desired segment length
 DLEN = 70
 CROSSOVER_RATE = 0.5
 SELECTION_RATE = 1
 SEL_TOURNAMENT_SIZE = 10
+MIN_SEGMENT_LENGTH = 10
 
 
 # Probability to add a datapoint during mutate
@@ -158,15 +159,27 @@ def my_mutate(chromo,maxVal):
             returns a sequence of Perceptually important point (PIP)
             identification and the corresponding time values of size Q_length
     """
-    if (random.random() < MUTATE_ADD_PROB and len(chromo) < maxVal):
-        # Mutate by adding element
-        isRepeated = True
-        randNum = -1
-        while isRepeated is True:
-            randNum = random.randrange(1,maxVal)
-            if randNum not in chromo:
-                isRepeated = False
 
+    if (random.random() < MUTATE_ADD_PROB and len(chromo) < maxVal):
+        chromo_list = list(chromo)
+        # Mutate by adding element
+
+        disallowed_values = set()
+        for val in chromo_list:
+            if val-MIN_SEGMENT_LENGTH+1 < 0:
+                lower_bound = 0
+            else:
+                lower_bound = val-MIN_SEGMENT_LENGTH+1
+
+            if val+MIN_SEGMENT_LENGTH > maxVal:
+                upper_bound = maxVal
+            else:
+                upper_bound = val+MIN_SEGMENT_LENGTH
+
+            disallowed_values.union(range(lower_bound,upper_bound))
+
+        allowed_values = set(range(1,maxVal)) - disallowed_values
+        randNum = random.sample(allowed_values,1)[0]
         chromo.add(randNum)
 
     elif len(chromo) > 0:

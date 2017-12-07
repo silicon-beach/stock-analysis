@@ -117,13 +117,13 @@ def template_patterns():
 #    patterns['inverse wedge2']['x'] = np.linspace(0,1,TEMPLATE_SIZE)
 #    patterns['inverse wedge2']['y'] = patterns['wedge2']['y'][::-1]
 #
-    patterns['uptrend'] = {}
-    patterns['uptrend']['x'] = np.linspace(0,1,TEMPLATE_SIZE)
-    patterns['uptrend']['y'] = np.linspace(0,1,TEMPLATE_SIZE)
-
-    patterns['downtrend'] = {}
-    patterns['downtrend']['x'] = np.linspace(0,1,TEMPLATE_SIZE)
-    patterns['downtrend']['y'] = np.linspace(1,0,TEMPLATE_SIZE)
+#    patterns['uptrend'] = {}
+#    patterns['uptrend']['x'] = np.linspace(0,1,TEMPLATE_SIZE)
+#    patterns['uptrend']['y'] = np.linspace(0,1,TEMPLATE_SIZE)
+#
+#    patterns['downtrend'] = {}
+#    patterns['downtrend']['x'] = np.linspace(0,1,TEMPLATE_SIZE)
+#    patterns['downtrend']['y'] = np.linspace(1,0,TEMPLATE_SIZE)
 
     #patterns['sideways'] = {}
     #patterns['sideways']['x'] = np.linspace(0,1,TEMPLATE_SIZE)

@@ -18,7 +18,7 @@ import template_patterns as tp
 import matplotlib.pyplot as plt
 
 POPULATION_SIZE = 50
-MAX_GENERATIONS = 50
+MAX_GENERATIONS = 400
 
 # Desired segment length
 DLEN = 70
@@ -300,8 +300,8 @@ def plot_statistics(logbook):
     labs = [l.get_label() for l in lns]
     ax1.legend(lns, labs, loc="center right")
 
-    plt.show()
     plt.savefig('stats_plot.pdf')
+    plt.show()
 
 
 

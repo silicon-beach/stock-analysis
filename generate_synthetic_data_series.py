@@ -68,6 +68,12 @@ if __name__ == '__main__':
     series_tuple = []
     series_tuple.append(('head and shoulders',70))
     series_tuple.append(('inverse head and shoulders',98))
+    series_tuple.append(('head and shoulders',40))
+    series_tuple.append(('inverse head and shoulders',200))
+    series_tuple.append(('head and shoulders',56))
+    series_tuple.append(('inverse head and shoulders',33))
+    series_tuple.append(('head and shoulders',100))
+    series_tuple.append(('inverse head and shoulders',40))
 
     noise_params = {}
     noise_params['x_mean'] = NOISE_X_MEAN

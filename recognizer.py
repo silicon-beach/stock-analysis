@@ -22,55 +22,48 @@ def PIP_identification(P, P_time, Q_length=7, isNumpyFormat=False):
 
 
     # Converted PIP identification to Numpy, for performance
-    if isNumpyFormat == False:
+    if isNumpyFormat is False:
         P = np.array(P)
         P_time = np.array(P_time)
     pip_indexes = [0, N-1]
+    distance = np.ones(N) * -1
+    pip_left = 0
+    pip_right = N-1
+
+    # Recreate P with the indexes on the first dimension
+    P_stacked = np.stack((np.arange(N),P),axis=1)
 
     for i in range(1, Q_length - 1):
-        index = PIP_distance(pip_indexes, P)
-        pip_indexes.append(index)
-        pip_indexes.sort()
+        # We save the previous left/right PIP, so that we only recalculate
+        # the distance values in between the previous left/right PIP.
+        index,pip_left,pip_right = PIP_distance(pip_indexes,P_stacked,distance,
+                                                pip_left,pip_right)
+        pos = np.searchsorted(pip_indexes,index)
+        pip_indexes.insert(pos,index)
 
     SP = P[pip_indexes]
     SP_time = P_time[pip_indexes]
 
     return SP, SP_time
 
-
-def get_adjacent_pip_index(index, is_pip, side):
-    """
-    Input:
-            is_pip: Indicator if a particular value has been identified as PIP
-            index: Current index
-            side: side to which we need the nearest PIP
-    Output:
-            returns nearest PIP
-    """
-
-    k = index
-    if side == "right":
-        while not is_pip[k]:
-            k += 1
-    if side == "left":
-        while not is_pip[k]:
-            k -= 1
-    return k
-
-
-def PIP_distance(pip_indexes, P):
+def PIP_distance(pip_indexes, P3, distance, start, stop, useVD=True):
     """
     Input:
             is_pip: Indicator if a particular value has been identified as PIP
             P: input sequence
+            distance: Cached distance array.
+            start: Start point of distance array to calculate distances
+            stop: Stop point of distance array to calculate distances
+            useVD: Use Vertical Distance (as opposed to Perpendicular Distance)
     Output:
             returns a point with maximum distance to nearest PIPs
     """
-    N = len(P)
+    N = P3.shape[0]
 
     P1 = np.zeros((N,2))
     P2 = np.zeros((N,2))
-    distance_P1_P2 = np.full(N,np.inf) # Fill with inf value
+    P1[pip_indexes] = np.nan # Do not use the PIP indexes
+    P2[pip_indexes] = np.nan
 
     for i in range(len(pip_indexes) - 1):
         idx = int(pip_indexes[i])
@@ -79,36 +72,60 @@ def PIP_distance(pip_indexes, P):
         P1[idx+1:idx_right,0] = idx
         P2[idx+1:idx_right,0] = idx_right
 
-        P1[idx+1:idx_right,1] = P[idx]
-        P2[idx+1:idx_right,1] = P[idx_right]
+        P1[idx+1:idx_right,1] = P3[idx,1]
+        P2[idx+1:idx_right,1] = P3[idx_right,1]
 
-        distance_P1_P2[idx+1:idx_right] = np.sqrt(((P[idx_right] - P[idx]) ** 2) +
-                                                     ((idx_right - idx) ** 2))
+    if useVD is True:
+        distance[start:stop] = vertical_distance(P1,P2,P3,start,stop)
+    else:
+        distance[start:stop] = perpendicular_distance(P1,P2,P3,start,stop)
+
+    index_max = np.nanargmax(distance)
+    pip_index_left = int(P1[index_max,0])
+    pip_index_right = int(P2[index_max,0])
+
+    # Return the index, the PIP to the left, and the PIP to the right.
+    return index_max,pip_index_left,pip_index_right
 
 
-    P3 = np.stack((np.arange(N),P),axis=1)
-
-    perp_distance = perpendicular_distance(
-        P1, P2, P3, distance_P1_P2)
-
-    index_max = np.nanargmax(perp_distance)
-
-    return index_max
-
-
-def perpendicular_distance(P1, P2, P3, distance):
+def perpendicular_distance(P1, P2, P3,start=-1,stop=-1):
     """
     Input:
             P1,P2,P3: 3 points in [x,y] format
-            S: slope between P1 and P2; this can pre-calculated
     Output:
             returns (perpendicular distance) between these 3 points
     """
 
-    PD = np.abs((P2[:,1] - P1[:,1]) * P3[:,0] - (P2[:,0] - P1[:,0]) *
-                 P3[:,1] + P2[:,0] * P1[:,1] - P2[:,1] * P1[:,0]) / distance[:]
+    if start != -1 and stop != -1:
+        PD = (np.abs(np.cross(P2[start:stop,:]-P1[start:stop,:],P1[start:stop,:]-P3[start:stop,:]))
+                                    /np.linalg.norm(P2[start:stop,:]-P1[start:stop,:],axis=1))
+    else:
+        PD = np.abs(np.cross(P2-P1,P1-P3))/np.linalg.norm(P2-P1,axis=1)
 
     return PD
+
+
+def vertical_distance(P1, P2, P3,start=-1,stop=-1):
+    """
+    Input:
+            P1,P2,P3: 3 points in [x,y] format
+            start,stop: Specify start/stop points, so that we do not have to
+                        recompute all points in the numpy array.
+    Output:
+            returns (vertical distance) between these 3 points
+    """
+
+    if start != -1 and stop != -1:
+        VD = np.abs(P1[start:stop,1] + (P2[start:stop,1] - P1[start:stop,1]) * (P3[start:stop,0] - P1[start:stop,0])
+                      / (P2[start:stop,0] - P1[start:stop,0]) - P3[start:stop,1])
+    else:
+        VD = np.abs(P1[:,1] + (P2[:,1] - P1[:,1]) * (P3[:,0] - P1[:,0])
+                      / (P2[:,0] - P1[:,0]) - P3[:,1])
+
+    return VD
+
+
+
 
 
 def inverse_head_and_shoulder_rule(SP, diff_value=0.15):
@@ -163,12 +180,8 @@ def template_matching(PIP, PIP_time, template, template_time):
         PIP = np.array(PIP[:N])
         PIP_time = np.array(PIP_time[:N])
 
-    #template = np.array(template)
-    #template_time = np.array(template_time)
-
     # Normalize all points to between 0 and 1
     PIP = PIP / np.abs(PIP).max()
-    template = template / np.abs(template).max()
 
     # Normalize the time data points between 0 and 1
     template_time = template_time - template_time[0]
@@ -180,10 +193,14 @@ def template_matching(PIP, PIP_time, template, template_time):
     #PIP_inverse = 1 - PIP
     #PIP_normalize = np.maximum(PIP,PIP_inverse)
     #AD = np.linalg.norm((template - PIP)/PIP_normalize) / np.sqrt(N)
-    AD = np.linalg.norm(template - PIP) / np.sqrt(N)
+    # Use the squared norm, because it is faster
+    tmp = template - PIP
+    AD = tmp.dot(tmp) / N
 
     # Temporal Distance - the x-axis difference
-    TD = np.linalg.norm(template_time - PIP_time) / np.sqrt(N - 1)
+    # Use the squared norm, because it is faster
+    tmp_time = template_time - PIP_time
+    TD = tmp_time.dot(tmp_time) / (N - 1)
 
     distortion = AD * TEMPLATE_OMEGA_WT + TD * (1 - TEMPLATE_OMEGA_WT)
 
@@ -216,6 +233,10 @@ def multiple_template_matching(PIP, PIP_time, template_list):
         if val < distortion_min:
             distortion_min = val
             min_pattern_name = template_name
+
+        # Early exit for invalid chromosome.
+        if np.isinf(val) == True:
+            break
 
     return (distortion_min,min_pattern_name)
 

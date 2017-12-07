@@ -24,7 +24,7 @@ MAX_GENERATIONS = 1000
 DLEN = 70
 CROSSOVER_RATE = 0.5
 SELECTION_RATE = 1
-SEL_TOURNAMENT_SIZE = 20
+SEL_TOURNAMENT_SIZE = 10
 
 
 # Probability to add a datapoint during mutate
@@ -72,10 +72,10 @@ def runGA(data_x,data_y):
 
     # For gathering statistics
     stats_fit = tools.Statistics(key=lambda ind: ind.fitness.values)
-    stats_fit.register("avg", np.mean)
-    stats_fit.register("std", np.std)
+    stats_fit.register("avg", np.nanmean)
+    stats_fit.register("std", np.nanstd)
     stats_fit.register("min", np.min)
-    stats_fit.register("max", np.max)
+    stats_fit.register("max", np.nanmax)
 
     stats_size = tools.Statistics(key=len)
     stats_size.register("avg", np.mean)
@@ -85,8 +85,6 @@ def runGA(data_x,data_y):
 
     mstats = tools.MultiStatistics(fitness=stats_fit, size=stats_size)
     logbook = tools.Logbook()
-
-
 
     pop = toolbox.population(n=POPULATION_SIZE)
 
@@ -216,9 +214,13 @@ def evaluate(data_x,data_y,ind_set,plot_data=False):
         #if distortion_val > 0.2:
         #    distortion_val = 5
 
-        distortion_val += rc.temporal_control_penalty(endIdx-startIdx,70,2)
+        #distortion_val += rc.temporal_control_penalty(endIdx-startIdx,70,2)
 
         distortion_sum += distortion_val
+
+        # Early exit for invalid chromosomes.
+        if np.isinf(distortion_sum) == True:
+            break
 
 
         # Plot for debugging
@@ -242,7 +244,8 @@ def evaluate(data_x,data_y,ind_set,plot_data=False):
             #input('Press any key to continue...')
 
     # Normalize the distortion value by num of segments
-    distortion_sum /= (ind_len+1)
+    if np.isinf(distortion_sum) == False:
+        distortion_sum /= (ind_len+1)
 
     return (distortion_sum,)
 

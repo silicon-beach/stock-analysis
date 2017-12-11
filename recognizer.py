@@ -4,11 +4,11 @@ import numpy as np
 TEMPLATE_OMEGA_WT = 0.4
 
 
-def PIP_identification(P, P_time, Q_length=7, isNumpyFormat=False):
+def PIP_identification(P, P_time, Q_length=7):
     """
     Input:
-            P_time: time sequence
-            P: input sequence
+            P_time: time sequence (numpy array)
+            P: input sequence (numpy array)
             Q_length: number of PIPs
     Output:
             returns PIPs
@@ -20,11 +20,6 @@ def PIP_identification(P, P_time, Q_length=7, isNumpyFormat=False):
     if N < Q_length:
         return [], []
 
-
-    # Converted PIP identification to Numpy, for performance
-    if isNumpyFormat is False:
-        P = np.array(P)
-        P_time = np.array(P_time)
     pip_indexes = [0, N-1]
     distance = np.ones(N) * -1
     pip_left = 0
@@ -46,7 +41,7 @@ def PIP_identification(P, P_time, Q_length=7, isNumpyFormat=False):
 
     return SP, SP_time
 
-def PIP_distance(pip_indexes, P3, distance, start, stop, useVD=True):
+def PIP_distance(pip_indexes, P3, distance, start, stop):
     """
     Input:
             is_pip: Indicator if a particular value has been identified as PIP
@@ -54,7 +49,6 @@ def PIP_distance(pip_indexes, P3, distance, start, stop, useVD=True):
             distance: Cached distance array.
             start: Start point of distance array to calculate distances
             stop: Stop point of distance array to calculate distances
-            useVD: Use Vertical Distance (as opposed to Perpendicular Distance)
     Output:
             returns a point with maximum distance to nearest PIPs
     """
@@ -75,10 +69,16 @@ def PIP_distance(pip_indexes, P3, distance, start, stop, useVD=True):
         P1[idx+1:idx_right,1] = P3[idx,1]
         P2[idx+1:idx_right,1] = P3[idx_right,1]
 
-    if useVD is True:
-        distance[start:stop] = vertical_distance(P1,P2,P3,start,stop)
-    else:
-        distance[start:stop] = perpendicular_distance(P1,P2,P3,start,stop)
+    #if useVD is True:
+    #    distance[start:stop] = vertical_distance(P1,P2,P3,start,stop)
+    #else:
+    #    distance[start:stop] = perpendicular_distance(P1,P2,P3,start,stop)
+
+    # Inline the distance method, to improve performance.
+    # This is using Vertical Distance method.
+    distance[start:stop] = np.abs(P1[start:stop,1] + (P2[start:stop,1] - P1[start:stop,1]) * (P3[start:stop,0] - P1[start:stop,0])
+                      / (P2[start:stop,0] - P1[start:stop,0]) - P3[start:stop,1])
+
 
     index_max = np.nanargmax(distance)
     pip_index_left = int(P1[index_max,0])
